@@ -3,10 +3,60 @@ window.SunsetDB = (() => {
 
   async function load() {
     if (topics) return topics;
-    const res = await fetch("content/topics.json", { cache: "no-store" });
-    if (!res.ok) throw new Error("Could not load content/topics.json — serve via HTTP (see README).");
+    const res = await fetch("/api/topics", { cache: "no-store" });
+    if (!res.ok) throw new Error("Could not load /api/topics — run python server.py (see README).");
     topics = await res.json();
     return topics;
+  }
+
+  function clearCache() {
+    topics = null;
+  }
+
+  async function getTopic(id) {
+    const res = await fetch(`/api/topics/${encodeURIComponent(id)}`, { cache: "no-store" });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || `Load failed (${res.status})`);
+    return data;
+  }
+
+  async function createTopic(topic) {
+    const res = await fetch("/api/topics", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(topic),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || `Create failed (${res.status})`);
+    clearCache();
+    return data;
+  }
+
+  async function updateTopic(id, topic) {
+    const res = await fetch(`/api/topics/${encodeURIComponent(id)}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...topic, id }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || `Update failed (${res.status})`);
+    clearCache();
+    return data;
+  }
+
+  async function saveTopic(topic, { isUpdate } = {}) {
+    if (isUpdate) return updateTopic(topic.id, topic);
+    return createTopic(topic);
+  }
+
+  async function deleteTopic(id) {
+    const res = await fetch(`/api/topics/${encodeURIComponent(id)}`, {
+      method: "DELETE",
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || `Delete failed (${res.status})`);
+    clearCache();
+    return data;
   }
 
   function haystack(t) {
@@ -54,7 +104,6 @@ window.SunsetDB = (() => {
       if (t.os && t.os !== "both") oses.add(t.os);
       else if (t.os === "both") { oses.add("windows"); oses.add("linux"); }
     });
-    // Always offer both platforms in the filter
     oses.add("windows");
     oses.add("linux");
     return { langs, cats, oses };
@@ -103,8 +152,17 @@ window.SunsetDB = (() => {
     return keys.map(k => ({ language: k, ...sn[k] }));
   }
 
+  function slugify(s) {
+    return String(s || "")
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "");
+  }
+
   return {
-    load, filter, fillSelect, collectMeta, chips, esc,
-    detailUrl, highlight, haystack, orderedSnippets, LANG_ORDER
+    load, clearCache, getTopic, createTopic, updateTopic, saveTopic, deleteTopic,
+    filter, fillSelect, collectMeta, chips, esc,
+    detailUrl, highlight, haystack, orderedSnippets, LANG_ORDER, slugify
   };
 })();

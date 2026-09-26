@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Edit — Sunset DB</title>
+  <link rel="stylesheet" href="assets/style.css" />
+</head>
+<body>
+  <nav class="topnav">
+    <a class="brand" href="index.html"><img class="brand-mark" src="assets/logo-mark.svg" alt="" width="28" height="28" /><span>Sunset DB</span></a>
+    <div class="nav-links">
+      <a href="index.html">Search</a>
+      <a href="catalog.html">Catalog</a>
+      <a class="active" href="add.html">Edit</a>
+      <a href="delete.html">Delete</a>
+    </div>
+  </nav>
+  <main class="page">
+    <h1>Add / Edit topic</h1>
+    <p class="lead">Create a new topic, or load an existing id to update it.</p>
+
+    <div class="panel load-panel">
+      <h3>Load existing</h3>
+      <div class="form-row form-row-inline">
+        <input id="load-id" type="text" placeholder="topic-id" list="topic-ids" autocomplete="off" />
+        <datalist id="topic-ids"></datalist>
+        <button type="button" id="btn-load" class="btn">Load</button>
+        <button type="button" id="btn-new" class="btn btn-ghost">New blank</button>
+      </div>
+      <p id="mode-line" class="count-line">Mode: <strong>create</strong></p>
+    </div>
+
+    <form id="topic-form" class="topic-form" autocomplete="off">
+      <div class="form-grid">
+        <label>Id <input id="f-id" name="id" required pattern="[a-z0-9\-]+" placeholder="my-topic-id" /></label>
+        <label>Slug <input id="f-slug" name="slug" placeholder="defaults to id" /></label>
+        <label>Title <input id="f-title" name="title" required placeholder="Short Title" /></label>
+        <label>Category <input id="f-category" name="category" placeholder="io" list="cat-list" /></label>
+        <datalist id="cat-list"></datalist>
+        <label>OS
+          <select id="f-os" name="os">
+            <option value="both">both</option>
+            <option value="windows">windows</option>
+            <option value="linux">linux</option>
+          </select>
+        </label>
+        <label>Tags <input id="f-tags" name="tags" placeholder="comma, separated" /></label>
+        <label class="span-2">Languages
+          <div class="check-row" id="lang-checks">
+            <label class="check"><input type="checkbox" value="c" checked /> c</label>
+            <label class="check"><input type="checkbox" value="go" checked /> go</label>
+            <label class="check"><input type="checkbox" value="rust" checked /> rust</label>
+            <label class="check"><input type="checkbox" value="python" checked /> python</label>
+          </div>
+        </label>
+        <label class="span-2">Summary <textarea id="f-summary" rows="2" placeholder="One or two sentences."></textarea></label>
+        <label class="span-2">When to use <textarea id="f-when" rows="2" placeholder="When this pattern applies."></textarea></label>
+        <label class="span-2">Pitfalls <textarea id="f-pitfalls" rows="3" placeholder="One per line"></textarea></label>
+        <label class="span-2">References <textarea id="f-refs" rows="3" placeholder="One URL per line"></textarea></label>
+      </div>
+
+      <h2 class="form-section">Snippets</h2>
+      <div id="snippet-panels"></div>
+
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary" id="btn-save">Save topic</button>
+        <span id="form-status" class="form-status" role="status"></span>
+      </div>
+    </form>
+  </main>
+  <script src="assets/app.js"></script>
+  <script>
+    (async () => {
+      const {
+        load, getTopic, createTopic, updateTopic, collectMeta, LANG_ORDER, slugify, esc
+      } = SunsetDB;
+
+      const modeLine = document.getElementById("mode-line");
+      const statusEl = document.getElementById("form-status");
+      const form = document.getElementById("topic-form");
+      const loadId = document.getElementById("load-id");
+      const idInput = document.getElementById("f-id");
+      let editing = false; // true = update existing
+
+      function setMode(isEdit) {
+        editing = isEdit;
+        modeLine.innerHTML = isEdit
+          ? `Mode: <strong>update</strong> <span class="muted">(id locked)</span>`
+          : `Mode: <strong>create</strong>`;
+        idInput.readOnly = isEdit;
+        document.getElementById("btn-save").textContent = isEdit ? "Update topic" : "Create topic";
+      }
+
+      function setStatus(msg, ok) {
+        statusEl.textContent = msg || "";
+        statusEl.className = "form-status" + (msg ? (ok ? " ok" : " err") : "");
+      }
+
+      function lines(s) {
+        return String(s || "").split(/\n/).map(x => x.trim()).filter(Boolean);
+      }
+      function csv(s) {
+        return String(s || "").split(",").map(x => x.trim()).filter(Boolean);
+      }
+
+      function buildSnippetPanels() {
+        const root = document.getElementById("snippet-panels");
+        root.innerHTML = "";
+        LANG_ORDER.forEach(lang => {
+          const div = document.createElement("div");
+          div.className = "snippet-edit panel";
+          div.dataset.lang = lang;
+          div.innerHTML = `
+            <h3>${esc(lang)}</h3>
+            <label>Code <textarea class="snip-code" rows="8" placeholder="// ${esc(lang)} snippet"></textarea></label>
+            <label>Notes <input class="snip-notes" type="text" placeholder="Optional notes" /></label>
+          `;
+          root.appendChild(div);
+        });
+      }
+
+      function readForm() {
+        const id = idInput.value.trim();
+        const langs = [...document.querySelectorAll("#lang-checks input:checked")].map(c => c.value);
+        const snippets = {};
+        document.querySelectorAll(".snippet-edit").forEach(panel => {
+          const lang = panel.dataset.lang;
+          const code = panel.querySelector(".snip-code").value;
+          const notes = panel.querySelector(".snip-notes").value.trim();
+          if (code.trim() || notes) {
+            snippets[lang] = { code, notes };
+          }
+        });
+        const slug = document.getElementById("f-slug").value.trim() || id;
+        return {
+          id,
+          slug,
+          title: document.getElementById("f-title").value.trim(),
+          category: document.getElementById("f-category").value.trim(),
+          tags: csv(document.getElementById("f-tags").value),
+          languages: langs,
+          os: document.getElementById("f-os").value,
+          summary: document.getElementById("f-summary").value.trim(),
+          when_to_use: document.getElementById("f-when").value.trim(),
+          snippets,
+          pitfalls: lines(document.getElementById("f-pitfalls").value),
+          references: lines(document.getElementById("f-refs").value),
+        };
+      }
+
+      function fillForm(t) {
+        idInput.value = t.id || "";
+        document.getElementById("f-slug").value = t.slug || "";
+        document.getElementById("f-title").value = t.title || "";
+        document.getElementById("f-category").value = t.category || "";
+        document.getElementById("f-os").value = t.os || "both";
+        document.getElementById("f-tags").value = (t.tags || []).join(", ");
+        document.getElementById("f-summary").value = t.summary || "";
+        document.getElementById("f-when").value = t.when_to_use || "";
+        document.getElementById("f-pitfalls").value = (t.pitfalls || []).join("\n");
+        document.getElementById("f-refs").value = (t.references || []).join("\n");
+        const set = new Set(t.languages || []);
+        document.querySelectorAll("#lang-checks input").forEach(c => {
+          c.checked = set.size ? set.has(c.value) : true;
+        });
+        document.querySelectorAll(".snippet-edit").forEach(panel => {
+          const sn = (t.snippets || {})[panel.dataset.lang] || {};
+          panel.querySelector(".snip-code").value = sn.code || "";
+          panel.querySelector(".snip-notes").value = sn.notes || "";
+        });
+      }
+
+      function blankForm() {
+        fillForm({
+          id: "", slug: "", title: "", category: "", tags: [],
+          languages: [...LANG_ORDER], os: "both",
+          summary: "", when_to_use: "", snippets: {}, pitfalls: [], references: []
+        });
+        setMode(false);
+        setStatus("");
+      }
+
+      buildSnippetPanels();
+
+      let all = [];
+      try { all = await load(); } catch (e) {
+        setStatus(e.message, false); return;
+      }
+      const meta = collectMeta(all);
+      const dl = document.getElementById("topic-ids");
+      all.slice().sort((a,b) => a.id.localeCompare(b.id)).forEach(t => {
+        const o = document.createElement("option");
+        o.value = t.id;
+        dl.appendChild(o);
+      });
+      const catDl = document.getElementById("cat-list");
+      [...meta.cats].sort().forEach(c => {
+        const o = document.createElement("option");
+        o.value = c;
+        catDl.appendChild(o);
+      });
+
+      idInput.addEventListener("blur", () => {
+        if (editing) return;
+        const slug = document.getElementById("f-slug");
+        if (!slug.value.trim() && idInput.value.trim()) {
+          slug.value = slugify(idInput.value);
+        }
+      });
+
+      document.getElementById("btn-new").addEventListener("click", () => blankForm());
+
+      document.getElementById("btn-load").addEventListener("click", async () => {
+        const id = loadId.value.trim();
+        if (!id) { setStatus("Enter a topic id to load.", false); return; }
+        setStatus("Loading…", true);
+        try {
+          const t = await getTopic(id);
+          fillForm(t);
+          setMode(true);
+          setStatus(`Loaded “${t.id}”.`, true);
+        } catch (e) {
+          setStatus(e.message, false);
+        }
+      });
+
+      // Deep-link: add.html?id=...
+      const qid = new URLSearchParams(location.search).get("id");
+      if (qid) {
+        loadId.value = qid;
+        document.getElementById("btn-load").click();
+      } else {
+        blankForm();
+      }
+
+      form.addEventListener("submit", async (ev) => {
+        ev.preventDefault();
+        const topic = readForm();
+        if (!topic.id || !topic.title) {
+          setStatus("Id and title are required.", false);
+          return;
+        }
+        setStatus(editing ? "Updating…" : "Creating…", true);
+        try {
+          const saved = editing
+            ? await updateTopic(topic.id, topic)
+            : await createTopic(topic);
+          const wasUpdate = editing;
+          setMode(true);
+          fillForm(saved);
+          setStatus(wasUpdate
+            ? `Updated “${saved.id}”.`
+            : `Created “${saved.id}”.`, true);
+          // refresh datalist if new
+          if (![...dl.options].some(o => o.value === saved.id)) {
+            const o = document.createElement("option");
+            o.value = saved.id;
+            dl.appendChild(o);
+          }
+        } catch (e) {
+          setStatus(e.message, false);
+        }
+      });
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Delete — Sunset DB</title>
+  <link rel="stylesheet" href="assets/style.css" />
+</head>
+<body>
+  <nav class="topnav">
+    <a class="brand" href="index.html"><img class="brand-mark" src="assets/logo-mark.svg" alt="" width="28" height="28" /><span>Sunset DB</span></a>
+    <div class="nav-links">
+      <a href="index.html">Search</a>
+      <a href="catalog.html">Catalog</a>
+      <a href="add.html">Edit</a>
+      <a class="active" href="delete.html">Delete</a>
+    </div>
+  </nav>
+  <main class="page">
+    <h1>Delete topic</h1>
+    <p class="lead">Search, confirm, then permanently remove a topic from SQLite.</p>
+    <div class="toolbar">
+      <input id="q" type="search" placeholder="Filter topics…" autofocus />
+    </div>
+    <div id="count" class="count-line"></div>
+    <div id="list" class="delete-list"></div>
+    <p id="status" class="form-status" role="status"></p>
+  </main>
+  <script src="assets/app.js"></script>
+  <script>
+    (async () => {
+      const { load, filter, chips, deleteTopic, clearCache, esc } = SunsetDB;
+      const q = document.getElementById("q");
+      const list = document.getElementById("list");
+      const count = document.getElementById("count");
+      const status = document.getElementById("status");
+      let all = [];
+
+      function setStatus(msg, ok) {
+        status.textContent = msg || "";
+        status.className = "form-status" + (msg ? (ok ? " ok" : " err") : "");
+      }
+
+      async function refresh() {
+        clearCache();
+        all = await load();
+        render();
+      }
+
+      function render() {
+        const items = filter(all, { q: q.value })
+          .sort((a, b) => a.title.localeCompare(b.title));
+        count.textContent = `${items.length} topics`;
+        list.innerHTML = "";
+        items.forEach(t => {
+          const row = document.createElement("div");
+          row.className = "delete-row";
+          row.innerHTML = `
+            <div class="delete-meta">
+              <h2></h2>
+              <div class="urlish"></div>
+              <p></p>
+              <div class="chips"></div>
+            </div>
+            <button type="button" class="btn btn-danger">Delete</button>
+          `;
+          row.querySelector("h2").textContent = t.title;
+          row.querySelector(".urlish").textContent = t.id;
+          row.querySelector("p").textContent = t.summary || "";
+          chips(t, row.querySelector(".chips"));
+          row.querySelector("button").addEventListener("click", async () => {
+            if (!confirm(`Delete topic “${t.id}”? This cannot be undone.`)) return;
+            setStatus(`Deleting ${t.id}…`, true);
+            try {
+              await deleteTopic(t.id);
+              setStatus(`Deleted “${t.id}”.`, true);
+              await refresh();
+            } catch (e) {
+              setStatus(e.message, false);
+            }
+          });
+          list.appendChild(row);
+        });
+      }
+
+      try {
+        all = await load();
+      } catch (e) {
+        count.textContent = e.message;
+        return;
+      }
+      q.addEventListener("input", render);
+      render();
+    })();
+  </script>
+</body>
+</html>
