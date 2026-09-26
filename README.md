@@ -4,7 +4,7 @@ Personal multi-language programming quick-reference for **C**, **Go**, **Rust**,
 
 Idiomatic, copy-pasteable snippets so common patterns stay one search away.
 
-Live store is **SQLite** (`data/sunset.db`). `content/topics.json` is seed/export only — imported once when the DB is empty.
+Live store is **SQLite** (`data/sunset.db`). `content/topics.json` is the initial seed; it is imported only on first database creation.
 
 ## Run
 
@@ -27,6 +27,16 @@ Then open:
 
 Requires `server.py` (not bare `http.server`) so `/api/topics` and SQLite work. Syntax highlighting uses vendored [highlight.js](https://highlightjs.org/) under `assets/vendor/highlight/` (works offline).
 
+The server listens on `127.0.0.1` only. It serves the app pages and assets, not the database, seed file, or repository files. Browser edits use a token issued to the app page; cross-origin requests cannot use the edit API. This is a local personal app, so other processes running under your account can still access its loopback API.
+
+To back up your current topics as JSON:
+
+```bash
+python server.py export data/topics-export.json
+```
+
+The export includes edits made in the app. Copy it somewhere safe; `data/*.json` is ignored by Git. To use an export as a fresh seed, copy it to `content/topics.json` before creating a new database.
+
 ## API
 
 | Method | Path | Action |
@@ -36,6 +46,8 @@ Requires `server.py` (not bare `http.server`) so `/api/topics` and SQLite work. 
 | `POST` | `/api/topics` | Create (409 if id exists) |
 | `PUT` | `/api/topics/<id>` | Update existing |
 | `DELETE` | `/api/topics/<id>` | Delete |
+
+Writes require the `X-Sunset-DB-Token` header, obtained from same-origin `GET /api/session`. Requests with a foreign `Origin` are rejected. Topic payloads must match the schema below; request bodies are limited to 1 MiB.
 
 ## Pages
 
@@ -48,8 +60,8 @@ Requires `server.py` (not bare `http.server`) so `/api/topics` and SQLite work. 
 ## Storage
 
 - **SQLite path:** `data/sunset.db` (created on first run)
-- On start: create tables if missing; if the DB has zero rows and `content/topics.json` exists, import all topics once
-- `content/topics.json` remains the seed/export file for a clean repo; local DBs are gitignored via `data/*.db`
+- On first database creation, import `content/topics.json` and record that seeding has happened. An empty database stays empty after later restarts.
+- Existing databases are migrated without reseeding. Local DBs and exports in `data/` are gitignored.
 - Nested fields (`tags`, `languages`, `snippets`, `pitfalls`, `references`) are stored as JSON columns
 
 Topic object shape (same as the seed file):
@@ -80,6 +92,7 @@ Topic object shape (same as the seed file):
 ```
 sunset-db/
   server.py
+  tests/
   index.html
   catalog.html
   topic.html

@@ -31,3 +31,4 @@ venv/
 
 # Local SQLite DBs (seed from content/topics.json on first run)
 data/*.db
+data/*.json

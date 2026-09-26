@@ -65,7 +65,8 @@
           const a = document.createElement("a");
           a.className = "result";
           a.href = detailUrl(t.id);
-          a.innerHTML = `<div class="urlish">topic / ${t.category || "general"} / ${t.id}</div><h2></h2><p></p><div class="chips"></div>`;
+          a.innerHTML = `<div class="urlish"></div><h2></h2><p></p><div class="chips"></div>`;
+          a.querySelector(".urlish").textContent = `topic / ${t.category || "general"} / ${t.id}`;
           a.querySelector("h2").textContent = t.title;
           a.querySelector("p").textContent = t.summary || "";
           chips(t, a.querySelector(".chips"));

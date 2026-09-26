@@ -28,49 +28,72 @@
   <script src="assets/app.js"></script>
   <script>
     (async () => {
-      const { load, esc, highlight, orderedSnippets } = SunsetDB;
+      const { load, highlight, orderedSnippets } = SunsetDB;
       const root = document.getElementById("root");
       const id = new URLSearchParams(location.search).get("id");
       let all;
       try { all = await load(); } catch (e) {
-        root.innerHTML = `<p class="desc">${esc(e.message)}</p>`; return;
+        root.textContent = e.message; return;
       }
       const t = all.find(x => x.id === id);
       if (!t) {
-        root.innerHTML = `<a class="back" href="catalog.html">← Catalog</a><p class="desc">Topic not found.</p>`;
+        root.textContent = "Topic not found.";
         return;
       }
       document.title = t.title + " — Sunset DB";
-      let html = `<a class="back" href="catalog.html">← Catalog</a>`;
-      html += `<h1>${esc(t.title)}</h1>`;
-      html += `<p class="desc">${esc(t.summary || "")}</p>`;
-      html += `<div class="chips" style="margin-bottom:1rem">`;
-      (t.languages||[]).forEach(l => html += `<span class="chip lang">${esc(l)}</span>`);
-      if (t.os) html += `<span class="chip os">${esc(t.os)}</span>`;
-      if (t.category) html += `<span class="chip">${esc(t.category)}</span>`;
-      (t.tags||[]).forEach(tag => html += `<span class="chip">${esc(tag)}</span>`);
-      html += `</div>`;
+      const append = (parent, tag, text, className) => {
+        const el = document.createElement(tag);
+        if (text !== undefined) el.textContent = text;
+        if (className) el.className = className;
+        parent.appendChild(el);
+        return el;
+      };
+      root.replaceChildren();
+      const back = append(root, "a", "← Catalog", "back");
+      back.href = "catalog.html";
+      append(root, "h1", t.title);
+      append(root, "p", t.summary || "", "desc");
+      const chips = append(root, "div", undefined, "chips");
+      chips.style.marginBottom = "1rem";
+      (t.languages || []).forEach(l => append(chips, "span", l, "chip lang"));
+      if (t.os) append(chips, "span", t.os, "chip os");
+      if (t.category) append(chips, "span", t.category, "chip");
+      (t.tags || []).forEach(tag => append(chips, "span", tag, "chip"));
       if (t.when_to_use) {
-        html += `<div class="panel"><h3>When to use</h3><p>${esc(t.when_to_use)}</p></div>`;
+        const panel = append(root, "div", undefined, "panel");
+        append(panel, "h3", "When to use");
+        append(panel, "p", t.when_to_use);
       }
       orderedSnippets(t).forEach(c => {
-        const lang = (c.language||"c").toLowerCase();
-        html += `<div class="code-block"><div class="bar"><span>${esc(lang)}</span><span>snippet</span></div>`;
-        html += `<pre><code class="language-${esc(lang)}">${esc(c.code || "")}</code></pre>`;
-        if (c.notes) html += `<div class="snip-notes">${esc(c.notes)}</div>`;
-        html += `</div>`;
+        const lang = (c.language || "c").toLowerCase();
+        const block = append(root, "div", undefined, "code-block");
+        const bar = append(block, "div", undefined, "bar");
+        append(bar, "span", lang);
+        append(bar, "span", "snippet");
+        const code = append(append(block, "pre"), "code", c.code || "");
+        code.className = `language-${lang}`;
+        if (c.notes) append(block, "div", c.notes, "snip-notes");
       });
       if (t.pitfalls && t.pitfalls.length) {
-        html += `<div class="panel"><h3>Pitfalls</h3><ul>`;
-        t.pitfalls.forEach(p => html += `<li>${esc(p)}</li>`);
-        html += `</ul></div>`;
+        const panel = append(root, "div", undefined, "panel");
+        append(panel, "h3", "Pitfalls");
+        const list = append(panel, "ul");
+        t.pitfalls.forEach(p => append(list, "li", p));
       }
       if (t.references && t.references.length) {
-        html += `<div class="panel refs"><h3>References</h3><ul>`;
-        t.references.forEach(r => html += `<li><a href="${esc(r)}" target="_blank" rel="noopener">${esc(r)}</a></li>`);
-        html += `</ul></div>`;
+        const panel = append(root, "div", undefined, "panel refs");
+        append(panel, "h3", "References");
+        const list = append(panel, "ul");
+        t.references.forEach(ref => {
+          let url;
+          try { url = new URL(ref); } catch { return; }
+          if (!["http:", "https:"].includes(url.protocol)) return;
+          const a = append(append(list, "li"), "a", ref);
+          a.href = url.href;
+          a.target = "_blank";
+          a.rel = "noopener noreferrer";
+        });
       }
-      root.innerHTML = html;
       highlight(root);
     })();
   </script>

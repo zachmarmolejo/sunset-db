@@ -1,5 +1,15 @@
 window.SunsetDB = (() => {
   let topics = null;
+  let editToken = null;
+
+  async function editHeaders() {
+    if (!editToken) {
+      const res = await fetch("/api/session", { cache: "no-store" });
+      if (!res.ok) throw new Error(`Could not start edit session (${res.status})`);
+      editToken = (await res.json()).edit_token;
+    }
+    return { "X-Sunset-DB-Token": editToken };
+  }
 
   async function load() {
     if (topics) return topics;
@@ -21,9 +31,10 @@ window.SunsetDB = (() => {
   }
 
   async function createTopic(topic) {
+    const headers = await editHeaders();
     const res = await fetch("/api/topics", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { ...headers, "Content-Type": "application/json" },
       body: JSON.stringify(topic),
     });
     const data = await res.json().catch(() => ({}));
@@ -33,9 +44,10 @@ window.SunsetDB = (() => {
   }
 
   async function updateTopic(id, topic) {
+    const headers = await editHeaders();
     const res = await fetch(`/api/topics/${encodeURIComponent(id)}`, {
       method: "PUT",
-      headers: { "Content-Type": "application/json" },
+      headers: { ...headers, "Content-Type": "application/json" },
       body: JSON.stringify({ ...topic, id }),
     });
     const data = await res.json().catch(() => ({}));
@@ -50,8 +62,10 @@ window.SunsetDB = (() => {
   }
 
   async function deleteTopic(id) {
+    const headers = await editHeaders();
     const res = await fetch(`/api/topics/${encodeURIComponent(id)}`, {
       method: "DELETE",
+      headers,
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.error || `Delete failed (${res.status})`);
