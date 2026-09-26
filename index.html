@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Sunset DB</title>
+  <link rel="stylesheet" href="assets/style.css" />
+</head>
+<body>
+  <nav class="topnav">
+    <a class="brand" href="index.html"><img class="brand-mark" src="assets/logo-mark.svg" alt="" width="28" height="28" /><span>Sunset DB</span></a>
+    <div class="nav-links">
+      <a class="active" href="index.html">Search</a>
+      <a href="catalog.html">Catalog</a>
+    </div>
+  </nav>
+
+  <section class="search-hero">
+    <div class="logo"><img class="logo-img" src="assets/logo.svg" alt="Sunset DB" width="220" height="50" /></div>
+    <p class="tagline">Multi-language programming quick-reference</p>
+    <div class="search-box">
+      <input id="q" type="search" placeholder="Search topics, APIs, patterns…" autocomplete="off" autofocus />
+    </div>
+    <div class="search-filters">
+      <select id="lang" aria-label="Language"></select>
+      <select id="os" aria-label="OS"></select>
+    </div>
+    <div id="results" class="results"></div>
+    <p id="hint" class="empty-hint">Start typing to search C · Go · Rust · Python snippets.</p>
+    <p class="lab-note">Personal cheat-sheet · Idiomatic snippets · Windows + Linux</p>
+  </section>
+
+  <script src="assets/app.js"></script>
+  <script>
+    (async () => {
+      const { load, filter, fillSelect, collectMeta, chips, detailUrl } = SunsetDB;
+      const q = document.getElementById("q");
+      const lang = document.getElementById("lang");
+      const os = document.getElementById("os");
+      const results = document.getElementById("results");
+      const hint = document.getElementById("hint");
+      let all = [];
+      try { all = await load(); } catch (e) {
+        hint.textContent = e.message; return;
+      }
+      const meta = collectMeta(all);
+      fillSelect(lang, meta.langs, "All languages");
+      fillSelect(os, meta.oses, "All OS");
+
+      function render() {
+        const query = q.value.trim();
+        const items = filter(all, { q: query, lang: lang.value, os: os.value });
+        results.innerHTML = "";
+        const show = query.length > 0 || lang.value || os.value;
+        hint.style.display = show ? "none" : "block";
+        if (!show) return;
+        if (!items.length) {
+          hint.style.display = "block";
+          hint.textContent = "No topics matched.";
+          return;
+        }
+        items.slice(0, 40).forEach(t => {
+          const a = document.createElement("a");
+          a.className = "result";
+          a.href = detailUrl(t.id);
+          a.innerHTML = `<div class="urlish">topic / ${t.category || "general"} / ${t.id}</div><h2></h2><p></p><div class="chips"></div>`;
+          a.querySelector("h2").textContent = t.title;
+          a.querySelector("p").textContent = t.summary || "";
+          chips(t, a.querySelector(".chips"));
+          results.appendChild(a);
+        });
+      }
+      q.addEventListener("input", render);
+      lang.addEventListener("change", render);
+      os.addEventListener("change", render);
+      const params = new URLSearchParams(location.search);
+      if (params.get("q")) { q.value = params.get("q"); render(); }
+      if (params.get("lang")) { lang.value = params.get("lang"); render(); }
+      if (params.get("os")) { os.value = params.get("os"); render(); }
+    })();
+  </script>
+</body>
+</html>

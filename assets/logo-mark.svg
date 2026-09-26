@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" role="img" aria-label="Sunset DB mark">
+  <title>Sunset DB</title>
+  <!-- soft halo -->
+  <path d="M8 28 A16 16 0 0 1 40 28 Z" fill="#f7ebe6"/>
+  <!-- sun semicircle -->
+  <path d="M13 28 A11 11 0 0 1 35 28 Z" fill="#c45c3e"/>
+  <!-- horizon -->
+  <rect x="6" y="27" width="36" height="2.5" rx="1.25" fill="#1a1a1a"/>
+  <!-- rays -->
+  <rect x="22.5" y="4" width="3" height="6" rx="1.5" fill="#c45c3e" opacity="0.9"/>
+  <rect x="10" y="9" width="3" height="6" rx="1.5" fill="#c45c3e" opacity="0.75" transform="rotate(-38 11.5 12)"/>
+  <rect x="35" y="9" width="3" height="6" rx="1.5" fill="#c45c3e" opacity="0.75" transform="rotate(38 36.5 12)"/>
+</svg>

@@ -1,0 +1,30 @@
+# OS junk
+.DS_Store
+Thumbs.db
+Desktop.ini
+ehthumbs.db
+
+# Editors / IDEs
+.vscode/
+.idea/
+*.swp
+*~
+*.bak
+
+# Local / private (never commit)
+private/
+content/private/
+*.local.md
+*.local.json
+notes.local.*
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Logs / temp
+*.log
+*.tmp
+.cache/

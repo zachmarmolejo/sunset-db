@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Topic — Sunset DB</title>
+  <link rel="stylesheet" href="assets/vendor/highlight/github.min.css" />
+  <link rel="stylesheet" href="assets/style.css" />
+</head>
+<body>
+  <nav class="topnav">
+    <a class="brand" href="index.html"><img class="brand-mark" src="assets/logo-mark.svg" alt="" width="28" height="28" /><span>Sunset DB</span></a>
+    <div class="nav-links">
+      <a href="index.html">Search</a>
+      <a href="catalog.html">Catalog</a>
+    </div>
+  </nav>
+  <main id="root" class="detail-wrap">
+    <p class="desc">Loading…</p>
+  </main>
+  <script src="assets/vendor/highlight/highlight.min.js"></script>
+  <script src="assets/vendor/highlight/c.min.js"></script>
+  <script src="assets/vendor/highlight/go.min.js"></script>
+  <script src="assets/vendor/highlight/rust.min.js"></script>
+  <script src="assets/vendor/highlight/python.min.js"></script>
+  <script src="assets/app.js"></script>
+  <script>
+    (async () => {
+      const { load, esc, highlight, orderedSnippets } = SunsetDB;
+      const root = document.getElementById("root");
+      const id = new URLSearchParams(location.search).get("id");
+      let all;
+      try { all = await load(); } catch (e) {
+        root.innerHTML = `<p class="desc">${esc(e.message)}</p>`; return;
+      }
+      const t = all.find(x => x.id === id);
+      if (!t) {
+        root.innerHTML = `<a class="back" href="catalog.html">← Catalog</a><p class="desc">Topic not found.</p>`;
+        return;
+      }
+      document.title = t.title + " — Sunset DB";
+      let html = `<a class="back" href="catalog.html">← Catalog</a>`;
+      html += `<h1>${esc(t.title)}</h1>`;
+      html += `<p class="desc">${esc(t.summary || "")}</p>`;
+      html += `<div class="chips" style="margin-bottom:1rem">`;
+      (t.languages||[]).forEach(l => html += `<span class="chip lang">${esc(l)}</span>`);
+      if (t.os) html += `<span class="chip os">${esc(t.os)}</span>`;
+      if (t.category) html += `<span class="chip">${esc(t.category)}</span>`;
+      (t.tags||[]).forEach(tag => html += `<span class="chip">${esc(tag)}</span>`);
+      html += `</div>`;
+      if (t.when_to_use) {
+        html += `<div class="panel"><h3>When to use</h3><p>${esc(t.when_to_use)}</p></div>`;
+      }
+      orderedSnippets(t).forEach(c => {
+        const lang = (c.language||"c").toLowerCase();
+        html += `<div class="code-block"><div class="bar"><span>${esc(lang)}</span><span>snippet</span></div>`;
+        html += `<pre><code class="language-${esc(lang)}">${esc(c.code || "")}</code></pre>`;
+        if (c.notes) html += `<div class="snip-notes">${esc(c.notes)}</div>`;
+        html += `</div>`;
+      });
+      if (t.pitfalls && t.pitfalls.length) {
+        html += `<div class="panel"><h3>Pitfalls</h3><ul>`;
+        t.pitfalls.forEach(p => html += `<li>${esc(p)}</li>`);
+        html += `</ul></div>`;
+      }
+      if (t.references && t.references.length) {
+        html += `<div class="panel refs"><h3>References</h3><ul>`;
+        t.references.forEach(r => html += `<li><a href="${esc(r)}" target="_blank" rel="noopener">${esc(r)}</a></li>`);
+        html += `</ul></div>`;
+      }
+      root.innerHTML = html;
+      highlight(root);
+    })();
+  </script>
+</body>
+</html>

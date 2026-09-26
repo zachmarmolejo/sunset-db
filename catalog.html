@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Catalog — Sunset DB</title>
+  <link rel="stylesheet" href="assets/style.css" />
+</head>
+<body>
+  <nav class="topnav">
+    <a class="brand" href="index.html"><img class="brand-mark" src="assets/logo-mark.svg" alt="" width="28" height="28" /><span>Sunset DB</span></a>
+    <div class="nav-links">
+      <a href="index.html">Search</a>
+      <a class="active" href="catalog.html">Catalog</a>
+    </div>
+  </nav>
+  <main class="page">
+    <h1>Full catalog</h1>
+    <p class="lead">Every language-guide topic in the database.</p>
+    <div class="toolbar">
+      <input id="q" type="search" placeholder="Filter catalog…" />
+      <select id="lang" aria-label="Language"></select>
+      <select id="os" aria-label="OS"></select>
+    </div>
+    <div id="count" class="count-line"></div>
+    <div id="grid" class="grid"></div>
+  </main>
+  <script src="assets/app.js"></script>
+  <script>
+    (async () => {
+      const { load, filter, fillSelect, collectMeta, chips, detailUrl } = SunsetDB;
+      const q = document.getElementById("q");
+      const lang = document.getElementById("lang");
+      const os = document.getElementById("os");
+      const grid = document.getElementById("grid");
+      const count = document.getElementById("count");
+      let all = [];
+      try { all = await load(); } catch (e) {
+        count.textContent = e.message; return;
+      }
+      const meta = collectMeta(all);
+      fillSelect(lang, meta.langs, "All languages");
+      fillSelect(os, meta.oses, "All OS");
+
+      function render() {
+        const items = filter(all, { q: q.value, lang: lang.value, os: os.value })
+          .sort((a,b) => a.title.localeCompare(b.title));
+        count.textContent = `${items.length} topics`;
+        grid.innerHTML = "";
+        items.forEach(t => {
+          const a = document.createElement("a");
+          a.className = "card";
+          a.href = detailUrl(t.id);
+          a.innerHTML = `<h2></h2><p></p><div class="chips"></div>`;
+          a.querySelector("h2").textContent = t.title;
+          a.querySelector("p").textContent = t.summary || "";
+          chips(t, a.querySelector(".chips"));
+          grid.appendChild(a);
+        });
+      }
+      q.addEventListener("input", render);
+      lang.addEventListener("change", render);
+      os.addEventListener("change", render);
+      render();
+    })();
+  </script>
+</body>
+</html>
