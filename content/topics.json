@@ -172,8 +172,8 @@
         "notes": "net/http Client; prefer context timeouts in real code."
       },
       "rust": {
-        "code": "// Cargo.toml: reqwest = { version = \"0.12\", features = [\"blocking\", \"json\"] }\nfn main() -> Result<(), Box<dyn std::error::Error>> {\n    let body = reqwest::blocking::get(\"https://example.com/\")?.text()?;\n    let client = reqwest::blocking::Client::new();\n    let resp = client.post(\"https://httpbin.org/post\")\n        .json(&serde_json::json!({\"ok\": true}))\n        .send()?;\n    println!(\"{} {}\", body.len(), resp.status());\n    Ok(())\n}\n",
-        "notes": "reqwest crate (async or blocking)."
+        "code": "// Cargo.toml: reqwest = { version = \"0.12\", features = [\"blocking\", \"json\"] }\nuse reqwest as req;\n\nfn main() -> Result<(), Box<dyn std::error::Error>> {\n    let body = req::blocking::get(\"https://example.com/\")?.text()?;\n    let client = req::blocking::Client::new();\n    let resp = client.post(\"https://httpbin.org/post\")\n        .json(&serde_json::json!({\"ok\": true}))\n        .send()?;\n    println!(\"{} {}\", body.len(), resp.status());\n    Ok(())\n}\n",
+        "notes": "req (guide name for the HTTP client; async or blocking)."
       },
       "python": {
         "code": "# stdlib:\nfrom urllib.request import urlopen, Request\nprint(urlopen(\"https://example.com/\").read()[:80])\n\n# or requests (third-party):\n# import requests\n# r = requests.post(\"https://httpbin.org/post\", json={\"ok\": True})\n# print(r.status_code, r.json())\n",
@@ -182,7 +182,8 @@
     },
     "pitfalls": [
       "Always set timeouts; hung connections are common.",
-      "TLS trust store / proxy env vars differ per platform."
+      "TLS trust store / proxy env vars differ per platform.",
+      "Cargo.toml dependency key remains reqwest on crates.io; this guide calls it req."
     ],
     "references": [
       "https://curl.se/libcurl/c/",
